@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Losowanie rekordu</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        nav {
+            width: 100%;
+            background-color: #f8f8f8;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        nav select {
+            margin-left: 10px;
+            padding: 8px;
+            font-size: 14px;
+        }
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        select, button, textarea {
+            padding: 10px;
+            margin: 10px;
+            font-size: 16px;
+        }
+        #customInput {
+            display: none;
+            width: 300px;
+            height: 100px;
+        }
+        #wheelContainer {
+            width: 400px;
+            height: 400px;
+            position: relative;
+        }
+        #wheel {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transition: transform 4s ease-out;
+        }
+        #wheelSvg {
+            width: 100%;
+            height: 100%;
+        }
+        #wheelSvg .outer-circle {
+            fill: white; /* Białe wypełnienie w trybie jasnym */
+            stroke: #333;
+            stroke-width: 2;
+        }
+        #wheelSvg .inner-circle {
+            fill: black; /* Czarny środek w trybie jasnym */
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        /* Styl przełącznika */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            margin-left: 10px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        /* Tryb nocny */
+        body.dark {
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        body.dark nav {
+            background-color: #333;
+            box-shadow: 0 2px 4px rgba(255,255,255,0.1);
+        }
+        body.dark select, body.dark button, body.dark textarea {
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+        }
+        body.dark #wheelSvg .outer-circle {
+            fill: #333; /* Ciemne wypełnienie w trybie nocnym */
+            stroke: #fff;
+        }
+        body.dark #wheelSvg .inner-circle {
+            fill: white; /* Biały środek w trybie nocnym */
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <select id="languageSelect">
+            <option value="pl">Polski</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+        </select>
+        <label class="switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="slider"></span>
+        </label>
+    </nav>
+    <main>
+        <h2 id="title">Losowanie rekordu</h2>
+        <select id="programSelect">
+            <option value="">Wybierz program</option>
+            <option value="C">C</option>
+            <option value="B">B</option>
+            <option value="A">A</option>
+            <option value="custom">Własne</option>
+        </select>
+        <textarea id="customInput" placeholder="Wpisz nazwiska (jedno w linii)"></textarea>
+        <button id="spinButton" disabled>Losuj</button>
+        <div id="wheelContainer">
+            <div id="wheel">
+                <svg id="wheelSvg" viewBox="0 0 400 400">
+                    <circle class="outer-circle" cx="200" cy="200" r="190"/>
+                    <circle class="inner-circle" cx="200" cy="200" r="50"/>
+                </svg>
+            </div>
+        </div>
+        <div id="result"></div>
+    </main>
+
+    <script>
+        // Nowa baza danych
+        const database = [
+            {"Nazwisko_Imie": "Cassidy Mckee", "Program": "A"},
+            {"Nazwisko_Imie": "Troy Poole", "Program": "B"},
+            {"Nazwisko_Imie": "Mari Norris", "Program": "B"},
+            {"Nazwisko_Imie": "Wang Bolton", "Program": "A"},
+            {"Nazwisko_Imie": "Victor Nguyen", "Program": "A"},
+            {"Nazwisko_Imie": "Sharon Roberson", "Program": "B"},
+            {"Nazwisko_Imie": "Tyler Williamson", "Program": "C"},
+            {"Nazwisko_Imie": "Bernard Lang", "Program": "A"},
+            {"Nazwisko_Imie": "Neville Good", "Program": "C"},
+            {"Nazwisko_Imie": "Martena Hammond", "Program": "A"},
+            {"Nazwisko_Imie": "Henry Barrera", "Program": "A"},
+            {"Nazwisko_Imie": "Quamar Nicholson", "Program": "B"},
+            {"Nazwisko_Imie": "Quon Maynard", "Program": "B"},
+            {"Nazwisko_Imie": "Moses Herman", "Program": "A"},
+            {"Nazwisko_Imie": "Winter Petersen", "Program": "A"},
+            {"Nazwisko_Imie": "Maxine Forbes", "Program": "B"},
+            {"Nazwisko_Imie": "Kasper Valencia", "Program": "C"},
+            {"Nazwisko_Imie": "Brennan Griffith", "Program": "B"},
+            {"Nazwisko_Imie": "Kylan Mckee", "Program": "A"},
+            {"Nazwisko_Imie": "Dacey Carrillo", "Program": "A"},
+            {"Nazwisko_Imie": "Autumn Rich", "Program": "A"},
+            {"Nazwisko_Imie": "Chandler Martin", "Program": "C"},
+            {"Nazwisko_Imie": "Knox Chapman", "Program": "C"},
+            {"Nazwisko_Imie": "Russell Workman", "Program": "A"},
+            {"Nazwisko_Imie": "George Fitzpatrick", "Program": "C"},
+            {"Nazwisko_Imie": "Basia Ferrell", "Program": "C"},
+            {"Nazwisko_Imie": "Reuben Mathis", "Program": "A"},
+            {"Nazwisko_Imie": "Brennan Sawyer", "Program": "C"},
+            {"Nazwisko_Imie": "Aphrodite Bartlett", "Program": "A"},
+            {"Nazwisko_Imie": "Dane Dudley", "Program": "B"},
+            {"Nazwisko_Imie": "Alika Davenport", "Program": "C"},
+            {"Nazwisko_Imie": "Danielle Hood", "Program": "C"},
+            {"Nazwisko_Imie": "Nash Warren", "Program": "C"},
+            {"Nazwisko_Imie": "Samuel Kerr", "Program": "C"},
+            {"Nazwisko_Imie": "Cain Shaffer", "Program": "A"},
+            {"Nazwisko_Imie": "Galena Webb", "Program": "A"},
+            {"Nazwisko_Imie": "Ahmed Foreman", "Program": "A"},
+            {"Nazwisko_Imie": "Brooke Wolf", "Program": "B"},
+            {"Nazwisko_Imie": "Ulla Brennan", "Program": "A"},
+            {"Nazwisko_Imie": "Mallory Bentley", "Program": "A"},
+            {"Nazwisko_Imie": "Bruno Fuller", "Program": "A"},
+            {"Nazwisko_Imie": "Sade Irwin", "Program": "C"},
+            {"Nazwisko_Imie": "Zeph Carr", "Program": "B"},
+            {"Nazwisko_Imie": "Zachary Maddox", "Program": "B"},
+            {"Nazwisko_Imie": "Jolie Jenkins", "Program": "C"},
+            {"Nazwisko_Imie": "Robert Bender", "Program": "A"},
+            {"Nazwisko_Imie": "Mannix Holmes", "Program": "B"},
+            {"Nazwisko_Imie": "Aspen Watkins", "Program": "B"},
+            {"Nazwisko_Imie": "Benjamin Andrews", "Program": "C"},
+            {"Nazwisko_Imie": "Hakeem Pitts", "Program": "A"}
+        ];
+
+        // Tłumaczenia
+        const translations = {
+            pl: {
+                title: "Losowanie rekordu",
+                darkModeOn: "Włącz tryb nocny",
+                darkModeOff: "Wyłącz tryb nocny",
+                spin: "Losuj",
+                programPrompt: "Wybierz program",
+                customPlaceholder: "Wpisz nazwiska (jedno w linii)",
+                result: "Wylosowano: "
+            },
+            en: {
+                title: "Record Draw",
+                darkModeOn: "Enable Dark Mode",
+                darkModeOff: "Disable Dark Mode",
+                spin: "Draw",
+                programPrompt: "Select program",
+                customPlaceholder: "Enter names (one per line)",
+                result: "Drawn: "
+            },
+            es: {
+                title: "Sorteo de registros",
+                darkModeOn: "Activar modo oscuro",
+                darkModeOff: "Desactivar modo oscuro",
+                spin: "Sortear",
+                programPrompt: "Seleccionar programa",
+                customPlaceholder: "Ingresa nombres (uno por línea)",
+                result: "Sorteado: "
+            },
+            fr: {
+                title: "Tirage au sort",
+                darkModeOn: "Activer le mode sombre",
+                darkModeOff: "Désactiver le mode sombre",
+                spin: "Tirer",
+                programPrompt: "Sélectionner un programme",
+                customPlaceholder: "Entrez les noms (un par ligne)",
+                result: "Tirage: "
+            },
+            de: {
+                title: "Ziehung",
+                darkModeOn: "Dunkelmodus aktivieren",
+                darkModeOff: "Dunkelmodus deaktivieren",
+                spin: "Ziehen",
+                programPrompt: "Programm auswählen",
+                customPlaceholder: "Namen eingeben (einer pro Zeile)",
+                result: "Gezogen: "
+            }
+        };
+
+        const programSelect = document.getElementById('programSelect');
+        const customInput = document.getElementById('customInput');
+        const spinButton = document.getElementById('spinButton');
+        const wheel = document.getElementById('wheel');
+        const wheelSvg = document.getElementById('wheelSvg');
+        const result = document.getElementById('result');
+        const title = document.getElementById('title');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const languageSelect = document.getElementById('languageSelect');
+        let filteredRecords = [];
+        let lastRandomIndex = 0;
+
+        // Funkcja aktualizacji języka
+        function updateLanguage(lang) {
+            const t = translations[lang];
+            title.textContent = t.title;
+            spinButton.textContent = t.spin;
+            programSelect.options[0].text = t.programPrompt;
+            programSelect.options[4].text = lang === 'pl' ? 'Własne' : 'Custom';
+            customInput.placeholder = t.customPlaceholder;
+            result.textContent = result.textContent ? `${t.result}${filteredRecords[lastRandomIndex]?.Nazwisko_Imie}` : '';
+        }
+
+        // Obsługa wyboru języka
+        languageSelect.addEventListener('change', function() {
+            updateLanguage(this.value);
+        });
+
+        // Obsługa trybu nocnego
+        darkModeToggle.addEventListener('change', function() {
+            document.body.classList.toggle('dark', this.checked);
+        });
+
+        // Obsługa wyboru programu
+        programSelect.addEventListener('change', function() {
+            const selectedProgram = this.value;
+            customInput.style.display = selectedProgram === 'custom' ? 'block' : 'none';
+            
+            if (selectedProgram === 'custom') {
+                filteredRecords = [];
+                updateWheel();
+                spinButton.disabled = true;
+            } else if (selectedProgram) {
+                filteredRecords = database.filter(record => record.Program === selectedProgram);
+                updateWheel();
+                spinButton.disabled = filteredRecords.length === 0;
+            } else {
+                filteredRecords = [];
+                updateWheel();
+                spinButton.disabled = true;
+            }
+        });
+
+        // Aktualizacja danych z pola tekstowego dla opcji "Własne"
+        customInput.addEventListener('input', function() {
+            const customText = this.value.trim();
+            if (customText) {
+                filteredRecords = customText.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(name => ({Program: 'custom', Nazwisko_Imie: name}));
+                updateWheel();
+                spinButton.disabled = filteredRecords.length === 0;
+            } else {
+                filteredRecords = [];
+                updateWheel();
+                spinButton.disabled = true;
+            }
+        });
+
+        // Aktualizacja koła z nazwiskami
+        function updateWheel() {
+            while (wheelSvg.children.length > 2) { // Zachowaj dwa okręgi
+                wheelSvg.removeChild(wheelSvg.lastChild);
+            }
+
+            if (filteredRecords.length > 0) {
+                const totalAngle = 360;
+                const angleStep = totalAngle / filteredRecords.length;
+                const radius = 150; // Odległość tekstu od środka
+
+                filteredRecords.forEach((record, index) => {
+                    const angle = angleStep * index - 90; // -90 aby zacząć od góry
+                    const rad = angle * Math.PI / 180;
+                    const x = 200 + radius * Math.cos(rad); // Pozycja x
+                    const y = 200 + radius * Math.sin(rad); // Pozycja y
+
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', x);
+                    text.setAttribute('y', y);
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('font-size', '16');
+                    text.setAttribute('transform', `rotate(${angle + 0}, ${x}, ${y})`); // Obrót prostopadły do krawędzi
+                    text.textContent = record.Nazwisko_Imie;
+                    wheelSvg.appendChild(text);
+                });
+            }
+        }
+
+        // Obsługa losowania
+        spinButton.addEventListener('click', function() {
+            if (filteredRecords.length === 0) return;
+
+            const randomIndex = Math.floor(Math.random() * filteredRecords.length);
+            lastRandomIndex = randomIndex;
+            const angleStep = 360 / filteredRecords.length;
+            const randomSpin = 360 * Math.floor(Math.random() * 5 + 1) + (angleStep * randomIndex); // Obrót z zatrzymaniem na wylosowanym
+
+            wheel.style.transform = `rotate(${randomSpin}deg)`;
+            
+            setTimeout(() => {
+                const winner = filteredRecords[randomIndex];
+                const lang = languageSelect.value;
+                result.textContent = `${translations[lang].result}${winner.Nazwisko_Imie}`;
+            }, 4000);
+        });
+
+        // Reset transformacji koła
+        wheel.addEventListener('transitionend', () => {
+            wheel.style.transition = 'none';
+            const angleStep = 360 / filteredRecords.length;
+            const finalAngle = angleStep * lastRandomIndex; // Ustawienie na wylosowanym
+            wheel.style.transform = `rotate(${finalAngle}deg)`;
+            setTimeout(() => {
+                wheel.style.transition = 'transform 4s ease-out';
+            }, 50);
+        });
+
+        // Inicjalizacja języka
+        updateLanguage('pl');
+    </script>
+</body>
+</html>
